@@ -16,3 +16,14 @@ nohup.out
 
 # macOS
 .DS_Store
+
+# GCP credentials — NEVER commit
+*.json
+!package.json
+!package-lock.json
+
+# Test output (generated media)
+test_output/
+
+# Agent files
+CLAUDE.md

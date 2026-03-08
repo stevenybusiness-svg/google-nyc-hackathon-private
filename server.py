@@ -43,18 +43,31 @@ _generation_tasks: dict[str, dict] = {}  # background task tracking
 app = FastAPI(title="在一起 — Together")
 
 # ---------------------------------------------------------------------------
-# Gemini client
+# Gemini client — Vertex AI (project-based) or API key
 # ---------------------------------------------------------------------------
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GOOGLE_API_KEY:
-    logger.warning("GOOGLE_API_KEY not set — Gemini calls will fail")
+GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
+GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+USE_VERTEX = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "").lower() == "true"
 
-gemini_client = genai.Client(api_key=GOOGLE_API_KEY) if GOOGLE_API_KEY else None
+if USE_VERTEX and GOOGLE_CLOUD_PROJECT:
+    gemini_client = genai.Client(
+        vertexai=True,
+        project=GOOGLE_CLOUD_PROJECT,
+        location=GOOGLE_CLOUD_LOCATION,
+    )
+    logger.info(f"Gemini client: Vertex AI (project={GOOGLE_CLOUD_PROJECT}, location={GOOGLE_CLOUD_LOCATION})")
+elif GOOGLE_API_KEY:
+    gemini_client = genai.Client(api_key=GOOGLE_API_KEY)
+    logger.info("Gemini client: API key mode")
+else:
+    gemini_client = None
+    logger.warning("No GOOGLE_CLOUD_PROJECT or GOOGLE_API_KEY set — Gemini calls will fail")
 
 try:
     from google.api_core import client_options as client_options_lib
     vision_opts = client_options_lib.ClientOptions(
-        quota_project_id=os.getenv("GOOGLE_CLOUD_PROJECT", "974516981471")
+        quota_project_id=GOOGLE_CLOUD_PROJECT or "974516981471"
     )
     vision_client = vision.ImageAnnotatorClient(client_options=vision_opts)
 except Exception as e:
@@ -2089,7 +2102,21 @@ async def create_storybook(room_id: str):
     if not data:
         return HTMLResponse("<h1>Room not found</h1>", status_code=404)
 
+    # Build full transcript from TranscriptLogger or captions
+    full_transcript = ""
+    transcript_logger = TranscriptLogger(room_id)
+    if transcript_logger.path.exists():
+        full_transcript = transcript_logger.read_markdown()
+
+    if not full_transcript:
+        caption_texts = [
+            c.get("text", "") for c in data["captions"]
+            if isinstance(c, dict) and c.get("text", "").strip()
+        ]
+        full_transcript = "\n".join(caption_texts)
+
     storybook_input = {
+        "transcript": full_transcript,
         "screenshots": data["screenshots"],
         "voice_snippets": data["voice_snippets"],
         "scene_descriptions": data["scene_descriptions"],
@@ -2137,21 +2164,39 @@ async def create_memory_video(room_id: str):
     participants = " and ".join(participant_names[:2]) or "two loved ones"
     mood = data.get("mood", "sentimental")
 
-    # Use pre-stylized images if available; otherwise stylize first 2 screenshots
+    # Build context string for Veo prompt from available data
+    snippets_text = " ".join(
+        s.get("text", "") for s in data["voice_snippets"][:3]
+        if isinstance(s, dict)
+    )
+    scene_text = " ".join(
+        s.get("description", "") for s in data["scene_descriptions"][:3]
+        if isinstance(s, dict)
+    )
+    context = f"A {mood} memory between {participants}."
+    if scene_text:
+        context += f" Scenes: {scene_text}."
+    if snippets_text:
+        context += f" They said: {snippets_text[:200]}"
+
+    # Use pre-stylized images if available; otherwise stylize screenshots
     pre_stylized = data.get("stylized_images", [])
-    screenshots_for_video = data["screenshots"][:2] if data["screenshots"] else []
-    num_screenshots = len(screenshots_for_video)
-    
-    log_api_call("gemini_flash_image_output", num_screenshots, f"Memory video stylization {room_id}")
+    if pre_stylized:
+        images_to_use = pre_stylized
+        skip_stylize = True
+    else:
+        images_to_use = data.get("screenshots", [])[:5]
+        skip_stylize = False
+
+    num_screenshots = len(images_to_use)
+    if not skip_stylize:
+        log_api_call("gemini_flash_image_output", num_screenshots, f"Memory video stylization {room_id}")
 
     result = await run_memory_video_pipeline(
         gemini_client,
-        screenshots_for_video,
-        participants,
-        voice_snippets=data["voice_snippets"],
-        scene_descriptions=data["scene_descriptions"],
-        mood=mood,
-        pre_stylized=pre_stylized,
+        images_to_use,
+        context=context,
+        skip_stylize=skip_stylize,
     )
     
     # Log video generation cost if video was created
@@ -2229,8 +2274,31 @@ async def _run_parallel_generation(task_id: str, room_id: str, data: dict):
     async def gen_storybook():
         task["storybook"]["status"] = "running"
         try:
+            # Build full transcript: prefer TranscriptLogger markdown (has timestamps,
+            # speakers, translations), fall back to joining all captions text.
+            full_transcript = ""
+            transcript_logger = TranscriptLogger(room_id)
+            if transcript_logger.path.exists():
+                full_transcript = transcript_logger.read_markdown()
+                logger.info(f"Storybook using TranscriptLogger markdown ({len(full_transcript)} chars)")
+            
+            if not full_transcript:
+                # Fall back to captions array — join all translated text
+                caption_texts = [
+                    c.get("text", "") for c in data["captions"]
+                    if isinstance(c, dict) and c.get("text", "").strip()
+                ]
+                full_transcript = "\n".join(caption_texts)
+                logger.info(f"Storybook using {len(caption_texts)} captions as transcript")
+
+            if not full_transcript.strip():
+                logger.warning("No transcript available for storybook generation")
+                task["storybook"] = {"status": "empty", "message": "No conversation transcript captured"}
+                return
+
             async with _gemini_sem:
                 storybook_input = {
+                    "transcript": full_transcript,
                     "screenshots": data["screenshots"],
                     "voice_snippets": data["voice_snippets"],
                     "scene_descriptions": data["scene_descriptions"],
@@ -2264,14 +2332,36 @@ async def _run_parallel_generation(task_id: str, room_id: str, data: dict):
             participant_names = [str(p).split("_")[0] for p in data["participants"]]
             participants = " and ".join(participant_names[:2]) or "two loved ones"
             mood = data.get("mood", "sentimental")
+
+            # Build context string for Veo prompt from available data
+            snippets_text = " ".join(
+                s.get("text", "") for s in data["voice_snippets"][:3]
+                if isinstance(s, dict)
+            )
+            scene_text = " ".join(
+                s.get("description", "") for s in data["scene_descriptions"][:3]
+                if isinstance(s, dict)
+            )
+            context = f"A {mood} memory between {participants}."
+            if scene_text:
+                context += f" Scenes: {scene_text}."
+            if snippets_text:
+                context += f" They said: {snippets_text[:200]}"
+
+            # Use pre-stylized images if available, otherwise pass screenshots
+            pre_stylized = data.get("stylized_images", [])
+            if pre_stylized:
+                images_to_use = pre_stylized
+                skip_stylize = True
+            else:
+                images_to_use = data["screenshots"][:5]
+                skip_stylize = False
+
             result = await run_memory_video_pipeline(
                 gemini_client,
-                data["screenshots"][:2],
-                participants,
-                voice_snippets=data["voice_snippets"],
-                scene_descriptions=data["scene_descriptions"],
-                mood=mood,
-                pre_stylized=data.get("stylized_images", []),
+                images_to_use,
+                context=context,
+                skip_stylize=skip_stylize,
             )
             video_data: dict = {
                 "status": "done",
