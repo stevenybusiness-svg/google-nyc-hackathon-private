@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在一起 — Together</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Fraunces:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #101014;
+            color: #e9e6e1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Animated background */
+        .bg-glow {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .bg-glow::before, .bg-glow::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.12;
+            animation: drift 12s ease-in-out infinite alternate;
+        }
+        .bg-glow::before {
+            width: 500px; height: 500px;
+            background: #d9b48e;
+            top: -150px; left: -100px;
+        }
+        .bg-glow::after {
+            width: 400px; height: 400px;
+            background: #9ac2f2;
+            bottom: -100px; right: -80px;
+            animation-delay: -6s;
+        }
+        @keyframes drift {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(40px, 30px) scale(1.15); }
+        }
+
+        /* Content */
+        .content { position: relative; z-index: 1; text-align: center; }
+
+        h1 {
+            font-size: 4rem;
+            font-weight: 300;
+            color: #f3efe9;
+            margin-bottom: 0.2rem;
+            letter-spacing: 0.08em;
+            font-family: 'Fraunces', serif;
+        }
+        .subtitle {
+            font-size: 1.1rem;
+            color: #bfb5a8;
+            margin-bottom: 0.5rem;
+        }
+        .tagline {
+            font-size: 0.9rem;
+            color: #8f8372;
+            font-style: italic;
+            margin-bottom: 2.5rem;
+        }
+
+        .card {
+            background: rgba(20,18,16,0.82);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 2.2rem 2.5rem;
+            width: 440px;
+            max-width: 92vw;
+            text-align: left;
+        }
+        label {
+            display: block;
+            font-size: 0.8rem;
+            color: #999;
+            margin-bottom: 0.35rem;
+            margin-top: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        label:first-child { margin-top: 0; }
+        input, select {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 1px solid #383230;
+            border-radius: 10px;
+            background: rgba(17,15,14,0.82);
+            color: #f3efe9;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus, select:focus {
+            border-color: #d9b48e;
+            box-shadow: 0 0 0 3px rgba(217,180,142,0.18);
+        }
+        input::placeholder { color: #555; }
+
+        .join-btn {
+            width: 100%;
+            padding: 0.9rem;
+            margin-top: 1.8rem;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #c39d76 0%, #a67f5d 100%);
+            color: #1f1a17;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.02em;
+        }
+        .join-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(195,157,118,0.25);
+        }
+        .join-btn:active { transform: translateY(0); }
+
+        .hint {
+            margin-top: 1rem;
+            font-size: 0.78rem;
+            color: #555;
+            text-align: center;
+        }
+
+        /* Active rooms indicator */
+        .active-rooms {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+        .active-rooms-label {
+            font-size: 0.75rem;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 0.6rem;
+        }
+        .room-chip {
+            display: inline-block;
+            padding: 0.3rem 0.9rem;
+            margin: 0.2rem;
+            border-radius: 16px;
+            background: rgba(195,157,118,0.11);
+            border: 1px solid rgba(195,157,118,0.35);
+            color: #e2c6a8;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .room-chip:hover {
+            background: rgba(195,157,118,0.18);
+            border-color: rgba(195,157,118,0.5);
+        }
+        .room-chip .dot {
+            display: inline-block; width: 6px; height: 6px;
+            border-radius: 50%; background: #4caf50;
+            margin-right: 5px; vertical-align: middle;
+        }
+
+        /* Language chips */
+        .lang-preview {
+            display: flex;
+            gap: 0.4rem;
+            margin-top: 0.6rem;
+            flex-wrap: wrap;
+        }
+        .lang-chip {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+            color: #777;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-glow"></div>
+
+    <div class="content">
+        <h1>在一起</h1>
+        <p class="subtitle">Together — across distance &amp; language</p>
+        <p class="tagline">Distance doesn't have to mean absence.</p>
+
+        <div class="card">
+            <label for="room">Room</label>
+            <input type="text" id="room" value="demo" placeholder="e.g. demo, family-call">
+
+            <label for="name">Your Name</label>
+            <input type="text" id="name" placeholder="e.g. Steven, 奶奶, दादी">
+
+            <label for="language">I speak…</label>
+            <select id="language">
+                <option value="English">English</option>
+                <option value="Hindi">Hindi (हिन्दी)</option>
+                <option value="Chinese">Chinese (中文)</option>
+                <option value="Spanish">Spanish (Español)</option>
+                <option value="Japanese">Japanese (日本語)</option>
+                <option value="Korean">Korean (한국어)</option>
+            </select>
+
+            <div class="lang-preview">
+                <span class="lang-chip">EN ↔ HI</span>
+                <span class="lang-chip">EN ↔ 中文</span>
+                <span class="lang-chip">EN ↔ ES</span>
+                <span class="lang-chip">EN ↔ 日本語</span>
+                <span class="lang-chip">EN ↔ 한국어</span>
+            </div>
+
+            <button class="join-btn" onclick="joinRoom()">Join Room</button>
+
+            <p class="hint">Both participants join the same room to begin.</p>
+        </div>
+
+        <div class="active-rooms" id="activeRooms"></div>
+    </div>
+
+    <!-- Billing Monitor -->
+    <div id="billingPanel" style="display:none; position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.85); padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); font-family: 'SF Mono', 'Menlo', monospace; font-size: 11px; backdrop-filter: blur(10px); z-index: 1000;">
+      <div style="color: #888; font-weight: 500; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.08em; font-size: 9px;">API Usage</div>
+      <div id="billingTotal" style="color: #00ff88; font-size: 14px; font-weight: 700; margin-bottom: 4px;">$0.0000</div>
+      <div id="billingNext" style="color: #555; font-size: 10px;">Next alert: $3.00</div>
+    </div>
+
+    <script>
+        function joinRoom() {
+            const room = document.getElementById('room').value.trim() || 'demo';
+            const name = document.getElementById('name').value.trim() || 'anon';
+            const language = document.getElementById('language').value;
+            window.location.href = `/room/${room}?name=${encodeURIComponent(name)}&language=${encodeURIComponent(language)}`;
+        }
+
+        document.querySelectorAll('input').forEach(el => {
+            el.addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
+        });
+
+        async function loadActiveRooms() {
+            try {
+                const resp = await fetch('/api/rooms');
+                const data = await resp.json();
+                const container = document.getElementById('activeRooms');
+                const roomIds = Object.keys(data);
+                if (roomIds.length === 0) return;
+
+                container.innerHTML = '<div class="active-rooms-label">Active Rooms</div>';
+                roomIds.forEach(id => {
+                    const room = data[id];
+                    const chip = document.createElement('span');
+                    chip.className = 'room-chip';
+                    chip.innerHTML = `<span class="dot"></span>${id} (${room.participants.length})`;
+                    chip.onclick = () => {
+                        document.getElementById('room').value = id;
+                        document.getElementById('name').focus();
+                    };
+                    container.appendChild(chip);
+                });
+            } catch (e) { /* server not running yet */ }
+        }
+
+        loadActiveRooms();
+        setInterval(loadActiveRooms, 5000);
+
+        const params = new URLSearchParams(window.location.search);
+        const debugMode = params.get('debug') === '1';
+        if (debugMode) {
+            document.getElementById('billingPanel').style.display = 'block';
+            setInterval(updateBilling, 15000);
+            updateBilling();
+        }
+
+        async function updateBilling() {
+            try {
+                const resp = await fetch('/api/billing');
+                const data = await resp.json();
+                const total = data.summary.total_cost_usd;
+                const next = data.summary.next_threshold;
+                
+                document.getElementById('billingTotal').textContent = `$${total.toFixed(4)}`;
+                
+                if (next) {
+                    const remaining = next - total;
+                    document.getElementById('billingNext').textContent = `Next alert: $${next.toFixed(2)} ($${remaining.toFixed(2)} left)`;
+                    
+                    // Color coding
+                    const totalEl = document.getElementById('billingTotal');
+                    if (total >= 24) {
+                        totalEl.style.color = '#ff4444';
+                    } else if (total >= 20) {
+                        totalEl.style.color = '#ff9944';
+                    } else if (total >= 15) {
+                        totalEl.style.color = '#ffdd44';
+                    } else if (total >= 10) {
+                        totalEl.style.color = '#ddff44';
+                    } else {
+                        totalEl.style.color = '#00ff88';
+                    }
+                } else {
+                    document.getElementById('billingNext').textContent = 'All thresholds passed';
+                    document.getElementById('billingTotal').style.color = '#ff0000';
+                }
+            } catch (e) {
+                console.error('Billing fetch failed:', e);
+            }
+        }
+    </script>
+</body>
+</html>

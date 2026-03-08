@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在一起 — Memories</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Fraunces:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: #faf8f5;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        .header {
+            text-align: center;
+            padding: 2.5rem 2rem 1.5rem;
+            background: linear-gradient(180deg, #f0ebe4 0%, #faf8f5 100%);
+        }
+        .header h1 {
+            font-size: 2.4rem;
+            font-weight: 300;
+            color: #5a4a3a;
+            margin-bottom: 0.2rem;
+            font-family: 'Fraunces', serif;
+        }
+        .header .tagline {
+            color: #8a7a6a;
+            font-size: 1rem;
+            font-style: italic;
+        }
+
+        /* ── Call summary strip ── */
+        .call-summary {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            padding: 1rem 2rem;
+            background: #f5f0ea;
+            border-bottom: 1px solid #e8e0d8;
+            flex-wrap: wrap;
+        }
+        .summary-stat {
+            text-align: center;
+        }
+        .summary-stat .value {
+            font-size: 1.4rem;
+            font-weight: normal;
+            color: #5a4a3a;
+            font-variant-numeric: tabular-nums;
+        }
+        .summary-stat .label {
+            font-size: 0.7rem;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-top: 0.1rem;
+        }
+
+        /* ── Tabs ── */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1.2rem 2rem;
+            border-bottom: 1px solid #e8e0d8;
+        }
+        .tab {
+            padding: 0.55rem 1.4rem;
+            border: 1px solid #d4c4b4;
+            border-radius: 24px;
+            background: transparent;
+            color: #7a6a5a;
+            font-family: inherit;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+        .tab:hover { background: #f0e8e0; }
+        .tab.active {
+            background: #5a4a3a;
+            color: #fff;
+            border-color: #5a4a3a;
+        }
+
+        /* ── Content ── */
+        .content {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* ── Storybook ── */
+        .storybook-container { min-height: 300px; }
+        .storybook-frame {
+            border: none;
+            width: 100%;
+            min-height: 600px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+            background: #fff;
+        }
+
+        /* ── Memory video ── */
+        .video-section { text-align: center; }
+        .stylized-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        .stylized-img {
+            width: 100%;
+            border-radius: 14px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .stylized-img:hover {
+            transform: scale(1.03) translateY(-2px);
+            box-shadow: 0 10px 36px rgba(0,0,0,0.12);
+        }
+        .memory-video {
+            width: 100%;
+            max-width: 640px;
+            border-radius: 14px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin: 2rem auto;
+            display: block;
+        }
+
+        /* ── Loading / progress ── */
+        .loading {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #8a7a6a;
+        }
+        .progress-bar-wrapper {
+            width: 200px;
+            height: 3px;
+            background: #e8e0d8;
+            border-radius: 3px;
+            margin: 1.5rem auto 0;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #5a4a3a;
+            border-radius: 3px;
+            width: 0%;
+            animation: indeterminate 2s ease-in-out infinite;
+        }
+        @keyframes indeterminate {
+            0% { width: 0%; margin-left: 0%; }
+            50% { width: 60%; margin-left: 20%; }
+            100% { width: 0%; margin-left: 100%; }
+        }
+
+        .loading-text { font-size: 1rem; margin-bottom: 0.3rem; }
+        .loading-sub { font-size: 0.82rem; color: #aaa; }
+
+        .error-msg {
+            text-align: center;
+            padding: 2rem;
+            color: #c0392b;
+            background: #fdf2f2;
+            border-radius: 14px;
+            margin: 1rem 0;
+            border: 1px solid #f5d5d5;
+        }
+
+        .section-label {
+            font-size: 1.1rem;
+            color: #7a6a5a;
+            margin-bottom: 1rem;
+            font-weight: normal;
+        }
+
+        /* ── Actions ── */
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 0.8rem;
+            margin-top: 2.5rem;
+            flex-wrap: wrap;
+        }
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.6rem 1.4rem;
+            border: 1px solid #d4c4b4;
+            border-radius: 24px;
+            color: #7a6a5a;
+            background: transparent;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.88rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .action-btn:hover { background: #f0e8e0; }
+        .action-btn.primary {
+            background: #5a4a3a;
+            color: #fff;
+            border-color: #5a4a3a;
+        }
+        .action-btn.primary:hover { background: #4a3a2a; }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #bbb;
+            font-style: italic;
+        }
+
+        /* ── Caption history ── */
+        .caption-history {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e8e0d8;
+            border-radius: 14px;
+            padding: 1.5rem;
+            background: #fff;
+            margin-top: 1rem;
+        }
+        .caption-history-entry {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f0ebe4;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .caption-history-entry:last-child { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>在一起</h1>
+        <p class="tagline">Your moments together, preserved</p>
+    </div>
+
+    <div class="call-summary" id="callSummary" style="display:none;">
+        <div class="summary-stat">
+            <div class="value" id="sumDuration">—</div>
+            <div class="label">Duration</div>
+        </div>
+        <div class="summary-stat">
+            <div class="value" id="sumParticipants">—</div>
+            <div class="label">Participants</div>
+        </div>
+        <div class="summary-stat">
+            <div class="value" id="sumLanguages">—</div>
+            <div class="label">Languages</div>
+        </div>
+        <div class="summary-stat">
+            <div class="value" id="sumScreenshots">—</div>
+            <div class="label">Screenshots</div>
+        </div>
+        <div class="summary-stat">
+            <div class="value" id="sumMoments">—</div>
+            <div class="label">Voice Moments</div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('storybook', this)">Interactive Storybook</button>
+        <button class="tab" onclick="showTab('video', this)">Memory Video</button>
+        <button class="tab" onclick="showTab('captions', this)">Captions</button>
+    </div>
+
+    <div class="content">
+        <!-- Storybook Tab -->
+        <div id="tab-storybook" class="tab-content">
+            <div class="loading" id="storybookLoading">
+                <p class="loading-text">Weaving your memories into a storybook…</p>
+                <p class="loading-sub">Generating illustrations and narrative</p>
+                <div class="progress-bar-wrapper"><div class="progress-bar"></div></div>
+            </div>
+            <div class="storybook-container" id="storybookContent" style="display:none;"></div>
+        </div>
+
+        <!-- Video Tab -->
+        <div id="tab-video" class="tab-content" style="display:none;">
+            <div class="loading" id="videoLoading">
+                <p class="loading-text">Stylizing your memories…</p>
+                <p class="loading-sub">Transforming screenshots into artistic keepsakes</p>
+                <div class="progress-bar-wrapper"><div class="progress-bar"></div></div>
+            </div>
+            <div class="video-section" id="videoContent" style="display:none;">
+                <h3 class="section-label">Stylized Memories</h3>
+                <div class="stylized-grid" id="stylizedGrid"></div>
+                <h3 class="section-label" id="videoLabel" style="display:none;">Memory Video</h3>
+                <div id="videoPlayer"></div>
+            </div>
+        </div>
+
+        <!-- Captions Tab -->
+        <div id="tab-captions" class="tab-content" style="display:none;">
+            <div class="loading" id="captionsLoading">
+                <p class="loading-text">Loading conversation…</p>
+                <div class="progress-bar-wrapper"><div class="progress-bar"></div></div>
+            </div>
+            <div id="captionsContent" style="display:none;">
+                <h3 class="section-label">Conversation Transcript</h3>
+                <div class="caption-history" id="captionHistory"></div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions">
+            <button class="action-btn" onclick="downloadStorybook()" id="downloadStorybookBtn" style="display:none;">Download Storybook</button>
+            <button class="action-btn" onclick="downloadVideo()" id="downloadVideoBtn" style="display:none;">Download Video</button>
+            <a href="/" class="action-btn primary">New Call</a>
+        </div>
+    </div>
+
+    <script>
+    const roomId = window.location.pathname.split('/room/')[1]?.split('/')[0] || 'demo';
+    let storybookHtml = null;
+    let videoBlob = null;
+
+    function showTab(tab, btn) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+        document.getElementById(`tab-${tab}`).style.display = 'block';
+        if (btn) btn.classList.add('active');
+    }
+
+    // ─── Load room info ───
+    async function loadRoomInfo() {
+        try {
+            const resp = await fetch(`/api/rooms/${roomId}/info`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+
+            document.getElementById('callSummary').style.display = 'flex';
+            document.getElementById('sumDuration').textContent = data.duration || '—';
+            document.getElementById('sumParticipants').textContent = data.participants?.length || 0;
+            document.getElementById('sumLanguages').textContent = data.languages?.join(' ↔ ') || '—';
+            document.getElementById('sumScreenshots').textContent = data.screenshots_count || 0;
+            document.getElementById('sumMoments').textContent = data.voice_snippets_count || 0;
+        } catch (e) { /* ok if not available */ }
+    }
+
+    // ─── Load storybook ───
+    async function loadStorybook() {
+        try {
+            const resp = await fetch(`/api/rooms/${roomId}/storybook`, { method: 'POST' });
+            document.getElementById('storybookLoading').style.display = 'none';
+
+            if (!resp.ok) {
+                document.getElementById('storybookContent').innerHTML =
+                    '<div class="error-msg">Could not generate storybook. The room may have ended or had no captured moments.</div>';
+                document.getElementById('storybookContent').style.display = 'block';
+                return;
+            }
+
+            storybookHtml = await resp.text();
+            const container = document.getElementById('storybookContent');
+            container.style.display = 'block';
+
+            const iframe = document.createElement('iframe');
+            iframe.className = 'storybook-frame';
+            iframe.sandbox = 'allow-same-origin';
+            container.appendChild(iframe);
+            iframe.srcdoc = storybookHtml;
+
+            iframe.onload = () => {
+                try {
+                    iframe.style.height = (iframe.contentDocument.body.scrollHeight + 60) + 'px';
+                } catch(e) {}
+            };
+
+            document.getElementById('downloadStorybookBtn').style.display = 'inline-flex';
+        } catch (e) {
+            document.getElementById('storybookLoading').style.display = 'none';
+            document.getElementById('storybookContent').innerHTML =
+                '<div class="error-msg">Failed to connect to server.</div>';
+            document.getElementById('storybookContent').style.display = 'block';
+        }
+    }
+
+    // ─── Load memory video ───
+    async function loadMemoryVideo() {
+        try {
+            const resp = await fetch(`/api/rooms/${roomId}/memory-video`, { method: 'POST' });
+            document.getElementById('videoLoading').style.display = 'none';
+
+            if (!resp.ok) {
+                document.getElementById('videoContent').innerHTML =
+                    '<div class="error-msg">Could not generate memory video.</div>';
+                document.getElementById('videoContent').style.display = 'block';
+                return;
+            }
+
+            const data = await resp.json();
+            document.getElementById('videoContent').style.display = 'block';
+
+            const grid = document.getElementById('stylizedGrid');
+            if (data.stylized_images && data.stylized_images.length > 0) {
+                data.stylized_images.forEach(img => {
+                    const imgEl = document.createElement('img');
+                    imgEl.className = 'stylized-img';
+                    imgEl.src = `data:${img.mime_type};base64,${img.data}`;
+                    grid.appendChild(imgEl);
+                });
+            } else {
+                grid.innerHTML = '<div class="empty-state">No images captured during the call.</div>';
+            }
+
+            if (data.video) {
+                document.getElementById('videoLabel').style.display = 'block';
+                const player = document.getElementById('videoPlayer');
+                const videoEl = document.createElement('video');
+                videoEl.className = 'memory-video';
+                videoEl.controls = true;
+                videoEl.autoplay = true;
+                videoEl.loop = true;
+                const videoSrc = `data:${data.video.mime_type};base64,${data.video.data}`;
+                videoEl.src = videoSrc;
+                player.appendChild(videoEl);
+
+                // Store for download
+                const byteChars = atob(data.video.data);
+                const byteArr = new Uint8Array(byteChars.length);
+                for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+                videoBlob = new Blob([byteArr], { type: data.video.mime_type });
+                document.getElementById('downloadVideoBtn').style.display = 'inline-flex';
+            }
+        } catch (e) {
+            document.getElementById('videoLoading').style.display = 'none';
+            document.getElementById('videoContent').innerHTML =
+                '<div class="error-msg">Failed to connect to server.</div>';
+            document.getElementById('videoContent').style.display = 'block';
+        }
+    }
+
+    // ─── Load captions ───
+    async function loadCaptions() {
+        try {
+            const resp = await fetch(`/api/rooms/${roomId}/captions`);
+            document.getElementById('captionsLoading').style.display = 'none';
+
+            if (!resp.ok) {
+                document.getElementById('captionsContent').innerHTML =
+                    '<div class="empty-state">No captions available for this room.</div>';
+                document.getElementById('captionsContent').style.display = 'block';
+                return;
+            }
+
+            const data = await resp.json();
+            const container = document.getElementById('captionsContent');
+            container.style.display = 'block';
+
+            const history = document.getElementById('captionHistory');
+            const captions = data.captions || [];
+            const snippets = data.voice_snippets || [];
+
+            if (captions.length === 0 && snippets.length === 0) {
+                history.innerHTML = '<div class="empty-state">No captions were captured during this call.</div>';
+                return;
+            }
+
+            let html = '';
+            captions.forEach(text => {
+                if (text && text.trim()) {
+                    html += `<div class="caption-history-entry">${escapeHtml(text)}</div>`;
+                }
+            });
+
+            if (snippets.length > 0) {
+                html += '<div style="margin-top:1rem;padding-top:1rem;border-top:2px solid #e8e0d8;">';
+                html += '<div style="font-size:0.8rem;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">Voice Moments</div>';
+                snippets.forEach(s => {
+                    html += `<div class="caption-history-entry"><span style="color:#999;font-size:0.8rem;">${escapeHtml(s.timestamp || '')} · ${escapeHtml(s.speaker || '')}</span><br>"${escapeHtml(s.text || '')}"</div>`;
+                });
+                html += '</div>';
+            }
+
+            history.innerHTML = html;
+        } catch (e) {
+            document.getElementById('captionsLoading').style.display = 'none';
+            document.getElementById('captionsContent').innerHTML =
+                '<div class="empty-state">Failed to load captions.</div>';
+            document.getElementById('captionsContent').style.display = 'block';
+        }
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // ─── Downloads ───
+    function downloadStorybook() {
+        if (!storybookHtml) return;
+        const blob = new Blob([storybookHtml], { type: 'text/html' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `together-storybook-${roomId}.html`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    function downloadVideo() {
+        if (!videoBlob) return;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(videoBlob);
+        a.download = `together-memory-${roomId}.mp4`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    // ─── Parallel generation with polling ───
+    let generationTaskId = null;
+
+    async function startParallelGeneration() {
+        try {
+            const resp = await fetch(`/api/rooms/${roomId}/generate-all`, { method: 'POST' });
+            if (!resp.ok) {
+                fallbackToSequential();
+                return;
+            }
+            const data = await resp.json();
+            generationTaskId = data.task_id;
+            pollGenerationStatus();
+        } catch (e) {
+            fallbackToSequential();
+        }
+    }
+
+    async function pollGenerationStatus() {
+        if (!generationTaskId) return;
+        try {
+            const resp = await fetch(`/api/rooms/${roomId}/generation-status/${generationTaskId}`);
+            if (!resp.ok) { fallbackToSequential(); return; }
+            const task = await resp.json();
+
+            if (task.storybook?.status === 'done' && !storybookHtml) {
+                storybookHtml = task.storybook.html;
+                renderStorybook(storybookHtml);
+            } else if (task.storybook?.status === 'empty' || task.storybook?.status === 'error') {
+                document.getElementById('storybookLoading').style.display = 'none';
+                document.getElementById('storybookContent').innerHTML =
+                    '<div class="error-msg">Could not generate storybook.</div>';
+                document.getElementById('storybookContent').style.display = 'block';
+            }
+
+            if (task.video?.status === 'done') {
+                document.getElementById('videoLoading').style.display = 'none';
+                renderVideo(task.video);
+            } else if (task.video?.status === 'empty' || task.video?.status === 'error') {
+                document.getElementById('videoLoading').style.display = 'none';
+                document.getElementById('videoContent').innerHTML =
+                    '<div class="error-msg">Could not generate memory video.</div>';
+                document.getElementById('videoContent').style.display = 'block';
+            } else if (task.video?.status === 'running') {
+                const sub = document.querySelector('#videoLoading .loading-sub');
+                if (sub) sub.textContent = `Running... ${Math.round(task.elapsed_s || 0)}s`;
+            }
+
+            if (task.captions?.status === 'done') {
+                document.getElementById('captionsLoading').style.display = 'none';
+                renderCaptions(task.captions);
+            }
+
+            if (task.status !== 'done') {
+                setTimeout(pollGenerationStatus, 2000);
+            }
+        } catch (e) {
+            setTimeout(pollGenerationStatus, 3000);
+        }
+    }
+
+    function renderStorybook(html) {
+        document.getElementById('storybookLoading').style.display = 'none';
+        const container = document.getElementById('storybookContent');
+        container.style.display = 'block';
+        const iframe = document.createElement('iframe');
+        iframe.className = 'storybook-frame';
+        iframe.sandbox = 'allow-same-origin';
+        container.appendChild(iframe);
+        iframe.srcdoc = html;
+        iframe.onload = () => {
+            try { iframe.style.height = (iframe.contentDocument.body.scrollHeight + 60) + 'px'; } catch(e) {}
+        };
+        document.getElementById('downloadStorybookBtn').style.display = 'inline-flex';
+    }
+
+    function renderVideo(videoTask) {
+        document.getElementById('videoContent').style.display = 'block';
+        const grid = document.getElementById('stylizedGrid');
+        if (videoTask.stylized_images && videoTask.stylized_images.length > 0) {
+            grid.innerHTML = '';
+            videoTask.stylized_images.forEach(img => {
+                const imgEl = document.createElement('img');
+                imgEl.className = 'stylized-img';
+                imgEl.src = `data:${img.mime_type};base64,${img.data}`;
+                grid.appendChild(imgEl);
+            });
+        } else {
+            grid.innerHTML = '<div class="empty-state">No images captured during the call.</div>';
+        }
+        if (videoTask.video) {
+            document.getElementById('videoLabel').style.display = 'block';
+            const player = document.getElementById('videoPlayer');
+            const videoEl = document.createElement('video');
+            videoEl.className = 'memory-video';
+            videoEl.controls = true; videoEl.autoplay = true; videoEl.loop = true;
+            videoEl.src = `data:${videoTask.video.mime_type};base64,${videoTask.video.data}`;
+            player.appendChild(videoEl);
+            const byteChars = atob(videoTask.video.data);
+            const byteArr = new Uint8Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+            videoBlob = new Blob([byteArr], { type: videoTask.video.mime_type });
+            document.getElementById('downloadVideoBtn').style.display = 'inline-flex';
+        }
+    }
+
+    function renderCaptions(captionsTask) {
+        const container = document.getElementById('captionsContent');
+        container.style.display = 'block';
+        const history = document.getElementById('captionHistory');
+        const captions = captionsTask.captions || [];
+        const snippets = captionsTask.voice_snippets || [];
+        if (captions.length === 0 && snippets.length === 0) {
+            history.innerHTML = '<div class="empty-state">No captions were captured.</div>';
+            return;
+        }
+        let html = '';
+        captions.forEach(text => {
+            if (text && text.trim()) html += `<div class="caption-history-entry">${escapeHtml(text)}</div>`;
+        });
+        if (snippets.length > 0) {
+            html += '<div style="margin-top:1rem;padding-top:1rem;border-top:2px solid #e8e0d8;">';
+            html += '<div style="font-size:0.8rem;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">Voice Moments</div>';
+            snippets.forEach(s => {
+                html += `<div class="caption-history-entry"><span style="color:#999;font-size:0.8rem;">${escapeHtml(s.timestamp || '')} · ${escapeHtml(s.speaker || '')}</span><br>"${escapeHtml(s.text || '')}"</div>`;
+            });
+            html += '</div>';
+        }
+        history.innerHTML = html;
+    }
+
+    function fallbackToSequential() {
+        loadStorybook();
+        loadMemoryVideo();
+        loadCaptions();
+    }
+
+    // ─── Init ───
+    loadRoomInfo();
+    startParallelGeneration();
+    </script>
+</body>
+</html>
