@@ -37,18 +37,31 @@ _generation_tasks: dict[str, dict] = {}  # background task tracking
 app = FastAPI(title="在一起 — Together")
 
 # ---------------------------------------------------------------------------
-# Gemini client
+# Gemini client — Vertex AI (project-based) or API key
 # ---------------------------------------------------------------------------
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GOOGLE_API_KEY:
-    logger.warning("GOOGLE_API_KEY not set — Gemini calls will fail")
+GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
+GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+USE_VERTEX = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "").lower() == "true"
 
-gemini_client = genai.Client(api_key=GOOGLE_API_KEY) if GOOGLE_API_KEY else None
+if USE_VERTEX and GOOGLE_CLOUD_PROJECT:
+    gemini_client = genai.Client(
+        vertexai=True,
+        project=GOOGLE_CLOUD_PROJECT,
+        location=GOOGLE_CLOUD_LOCATION,
+    )
+    logger.info(f"Gemini client: Vertex AI (project={GOOGLE_CLOUD_PROJECT}, location={GOOGLE_CLOUD_LOCATION})")
+elif GOOGLE_API_KEY:
+    gemini_client = genai.Client(api_key=GOOGLE_API_KEY)
+    logger.info("Gemini client: API key mode")
+else:
+    gemini_client = None
+    logger.warning("No GOOGLE_CLOUD_PROJECT or GOOGLE_API_KEY set — Gemini calls will fail")
 
 try:
     from google.api_core import client_options as client_options_lib
     vision_opts = client_options_lib.ClientOptions(
-        quota_project_id=os.getenv("GOOGLE_CLOUD_PROJECT", "974516981471")
+        quota_project_id=GOOGLE_CLOUD_PROJECT or "974516981471"
     )
     vision_client = vision.ImageAnnotatorClient(client_options=vision_opts)
 except Exception as e:
