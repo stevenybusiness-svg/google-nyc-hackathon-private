@@ -1,0 +1,40 @@
+---
+description: Frontend conventions — vanilla JS, book-themed UI, WebSocket client, audio/video handling
+globs: static/**/*.html
+alwaysApply: false
+---
+
+# Frontend Agent Rules
+
+## Stack
+
+Vanilla HTML/CSS/JS only. No frameworks, no build tools. Inline styles and scripts.
+
+## Book Layout (participant.html)
+
+- Left page = speaker's own words (`msg.side === "mine"`)
+- Right page = other person's translation (`msg.side === "theirs"`)
+- Visual moments (scene/sentiment) use `.visual-moment` class in right panel
+- Debounce visual entries: 10s for scenes, 12s for sentiment
+
+## Audio Pipeline
+
+- Mic: `getUserMedia` → `AudioContext(16kHz)` → `ScriptProcessor(4096)` → Int16 PCM → `ws.send(buffer)`
+- Playback: queue-based drain, rate-matched AudioContext (16kHz or 24kHz based on MIME)
+- Never create new AudioContext per chunk — reuse `ctx16k`/`ctx24k`
+
+## Camera + Motion Detection
+
+- Camera PiP: `.cam-pip` container with `<video>` + `<canvas>` overlay
+- Motion: 80x60 downsampled, 10px blocks, threshold 28, arrows at 300ms interval
+- Frame capture for server: 320x240 JPEG at 3s interval via `captureFrame()`
+
+## Color Palette
+
+- Background: `#0e0e12`
+- Warm accent: `rgba(191,155,120,...)`
+- Active: green (#4caf50), Muted: red (#f44336), Camera: blue (#4a9eff)
+
+## Polling
+
+Billing: 15s interval. Never poll faster than 10s for any endpoint.

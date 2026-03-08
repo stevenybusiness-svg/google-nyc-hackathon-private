@@ -1,0 +1,47 @@
+---
+description: Google API integration — Gemini, Vision, Veo model usage, data format handling
+globs: memory_video.py,storybook_generator.py
+alwaysApply: false
+---
+
+# Google API Agent Rules
+
+## Screenshot Data Format
+
+Screenshots flow through multiple pipelines. ALWAYS handle all three formats:
+
+```python
+if isinstance(data, dict):
+    img_data = data.get("data", "")
+elif isinstance(data, str):
+    img_data = data  # raw base64
+elif isinstance(data, bytes):
+    img_data = base64.b64encode(data).decode()
+```
+
+## Image Data at Boundaries
+
+- Gemini `inline_data.data` → bytes
+- Veo `types.Image(image_bytes=...)` → needs bytes
+- HTML `<img src="data:...;base64,...">` → needs base64 string
+- JSON response → needs base64 string
+
+Always convert at the boundary, never assume the format upstream.
+
+## Model Names
+
+| Model | Name |
+|-------|------|
+| Live translation | `gemini-2.5-flash-native-audio-latest` |
+| Text generation | `gemini-2.5-flash` |
+| Cheap text | `gemini-2.5-flash-lite` |
+| Image generation | `gemini-2.5-flash-image` |
+| Video generation | `veo-2.0-generate-001` |
+
+## Veo Polling
+
+Poll every 5s, max 300s. Wrap polling in try/except (network transients). Log elapsed time. If `operation.done` but no `generated_videos`, log the result object for debugging.
+
+## Cost Budget
+
+Total hackathon budget: $25. Memory video (~$2.50) is the most expensive single operation. Stylization is cheap (~$0.02/image). Always log costs via `log_api_call()`.

@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip3 --version)",
+      "Bash(pip --version)",
+      "Bash(ls -la /Users/stevenyang/Documents/google-nyc-hackathon/*.py)",
+      "Bash(wc -l /Users/stevenyang/Documents/google-nyc-hackathon/*.py)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''server.py''\\).read\\(\\)\\); print\\(''server.py: syntax OK''\\)\")",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\(''/Users/stevenyang/Documents/google-nyc-hackathon/server.py''\\).read\\(\\)\\); print\\(''server.py: syntax OK''\\)\")",
+      "Bash(python3 -c \":*)",
+      "Bash(git -C /Users/stevenyang/Documents/google-nyc-hackathon status)",
+      "Bash(git init)",
+      "Bash(git remote add origin https://github.com/stevenybusiness-svg/google-hackathon.git)",
+      "Bash(git add AGENTS.md BILLING_MONITOR.md Dockerfile README.md billing_monitor.py memory_video.py requirements.txt server.py skills.md storybook_generator.py test_billing.py static/)",
+      "Bash(git add .dockerignore .env.example)",
+      "Bash(git commit:*)",
+      "Bash(git push -u origin master)",
+      "Bash(git -C /Users/stevenyang/Documents/google-nyc-hackathon diff --stat)",
+      "Bash(git -C /Users/stevenyang/Documents/google-nyc-hackathon log --oneline -5)"
+    ]
+  }
+}

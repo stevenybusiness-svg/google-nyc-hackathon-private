@@ -1,0 +1,57 @@
+---
+description: Cross-cutting orchestration — deployment, testing, integration, cost management
+alwaysApply: true
+---
+
+# Orchestrator Agent Rules
+
+## Project Structure
+
+```
+server.py                  # Backend: FastAPI + WebSocket + Gemini Live
+memory_video.py            # Google API: stylize + Veo pipeline
+storybook_generator.py     # Google API: Gemini interleaved storybook
+billing_monitor.py         # Cost tracking
+static/
+  index.html               # Frontend: landing page
+  participant.html          # Frontend: call UI (book-themed)
+  memories.html             # Frontend: post-call memorabilia
+AGENTS.md                  # Agent roles and contracts
+skills.md                  # Implementation-level API reference
+```
+
+## Integration Contract
+
+WebSocket messages use `type` field. Adding a new message type requires updating:
+1. Server send logic in `server.py`
+2. `handleMessage()` switch in `participant.html`
+3. Message types table in `AGENTS.md`
+
+## Cost Discipline
+
+- Every API call must go through `log_api_call()` with realistic cost
+- Billing UI polls at 15s intervals (not faster)
+- Audio input logging batches to ~30s
+- Vision captions only on key moments (>50% label change + 8s debounce)
+- Total budget: $25 for the hackathon
+
+## Deployment
+
+- Cloud Run with `--session-affinity` for WebSocket support
+- Health check: `GET /health` → `{"status": "ok"}`
+- Readiness: `GET /ready` → system status with API availability
+- Static files mounted last: `app.mount("/static", ...)`
+
+## Parallelism Rules
+
+- Audio is the critical path — NEVER gate it behind a semaphore
+- Vision API (`batch_annotate_images`) is synchronous gRPC — ALWAYS run via `asyncio.to_thread()`
+- All Gemini calls (except Live audio) go through `_gemini_sem` (Semaphore=4)
+- All Vision calls go through `_vision_sem` (Semaphore=3)
+- State mutations (appending to screenshots/captions/etc.) go through `room._state_lock`
+- Post-call generation uses background tasks with `_generation_tasks` dict for status polling
+- Frontend polls `/generation-status/{task_id}` and renders each result as it arrives
+
+## Error Philosophy
+
+API failures are expected. Audio translation is critical path (must not crash). Vision, narration, storybook, and video are best-effort (log errors, continue).

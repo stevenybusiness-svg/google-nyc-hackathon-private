@@ -1,0 +1,46 @@
+---
+description: Backend server conventions — WebSocket routing, Gemini session lifecycle, room management
+globs: server.py,billing_monitor.py
+alwaysApply: false
+---
+
+# Backend Agent Rules
+
+## Gemini Live Session Lifecycle
+
+The async context manager from `gemini_client.aio.live.connect()` MUST be stored as `self._session_context` on the Room instance. A local variable will be garbage-collected, killing the WebSocket.
+
+```python
+# CORRECT
+self._session_context = gemini_client.aio.live.connect(model=MODEL, config=config)
+self.gemini_session = await self._session_context.__aenter__()
+
+# WRONG — session dies immediately
+ctx = gemini_client.aio.live.connect(model=MODEL, config=config)
+self.gemini_session = await ctx.__aenter__()
+```
+
+## Caption Routing
+
+Always send TWO caption messages per transcript:
+1. `side: "theirs"` → listener (translated text)
+2. `side: "mine"` → speaker (their own words echoed back)
+
+## Error Isolation
+
+Vision, narration, and sentiment are non-critical. Always wrap in `asyncio.create_task()` + try/except. Never let API failures crash the WebSocket connection.
+
+## Cost Tracking
+
+Every new API call path MUST include `log_api_call(name, cost, context)`. Audio input logging batches to every ~30s (960K bytes), not per chunk.
+
+## Vision Gating
+
+Only broadcast `visual_caption` when scene labels differ >50% from the previous detection AND 12+ seconds have elapsed. Store label sets in `self._last_vision_labels`.
+
+## Concurrency
+
+- Vision API is synchronous gRPC — ALWAYS wrap in `asyncio.to_thread()` + `_vision_sem`
+- Gemini narration calls go through `_gemini_sem` — never call without it
+- State mutations (screenshots, captions, etc.) use `async with self._state_lock:`
+- Audio `send_audio_to_gemini()` is the critical path — no semaphore, no lock
